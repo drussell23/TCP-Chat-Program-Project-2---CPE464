@@ -1,0 +1,22 @@
+PSUEDOCODE.
+
+1.) the server receives the client's packet.
+
+2.) server evaluates the packet to see if it exist
+		1.) if it doesn't exist send the packet back to the clietn with a flag 2
+		2.) if it does exist send the packet back to the client with a flag 3
+
+3.) done. 
+
+=======================================
+CODE. -- Server side handshake.
+
+#define CHAT_HEADER 3
+#define HANDLE_LENGTH_BYTE 1
+#define MAXIMUM_HANDLE_SIZE 100
+
+int socketNumber; 
+uint8_t flag = 0;
+uint8_t payload[MAXIMUM_HANDLE_SIZE + HANDLE_LENTH_BYTE];
+
+recvBuf(socketNumber, payload, &flag);

@@ -1,0 +1,63 @@
+
+PSUEDOCODE.
+
+client creates packet with flag 1
+
+client sends flag 1 // sendBuff() OR sendToServer();
+
+client waits & receives // recvBuff();
+
+// Start for every single client. 
+if (client is flag 2 (good handle))
+{
+	 confirm a good hanlde
+}
+else if(client is flag 3)
+{
+	error on initial packet
+}
+=======================================
+CODE.
+
+#define CHAT_HEADER 3
+#define HANDLE_LENGTH_BYTE 1
+#define MAXIMUM_HANDLE_SIZE 100
+
+int socketNumber;
+uint8_t flag = 0;
+uint16_t PDU_Length; 
+uint8_t Handle_Length; 
+char hanlde[MAXIMUM_HANDLE_SIZE]; // max 100 characters. aka payload too
+uint8_t packet[200 + CHAT_HEADER];
+uint8_t payload[MAXIMUM_HANDLE_SIZE + HANDLE_LENTH_BYTE];
+
+
+// Client creates the payload.
+PDU_Length = CHAT_HEADER + HANDLE_LENGTH_BYTE; // Length of PDU. Flag 1 packet. 
+
+flag = 1;
+
+// Creating a payload.
+memcpy(payload, &Handle_Length, sizeof(uint8_t));
+memcpy(payload + 1, handle, Handle_Length); 
+
+// Client sending the packet with flags.
+sendBuf(socketNumber, payload, Handle_Length + HANDLE_LENGTH_BYTE, flag);
+recvBuf(socketNumber, payload, &flag);
+
+if(flag == CONFIRM_GOOD_HANDLE)
+{
+	// Keep going.
+}
+else if(flag == ERROR_ON_INIT_PACKET)
+{
+	cout << "Handle already exist." << endl;
+	exit(-1);
+}
+
+void CREATING_PACKET(uint16_t PDU_Length, uint8_t flag, uint8_t *payload, uint8_t *packet)
+{
+	memcpy(packet, &PDU_Length, sizeof(uint16_t));
+	memcpy(packet + sizeof(uint16_t), &flag, sizeof(uint8_t));
+	memcpy(packet + sizeof(uint8_t) + 2, &payload, PDU_Length - CHAT_HEADER); // PDU = Header + payload.
+}
