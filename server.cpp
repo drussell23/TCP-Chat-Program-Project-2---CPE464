@@ -1,6 +1,6 @@
 /******************************************************************************
- * Revised server.cpp with additional robustness improvements and logging.
- *
+ * Name: Derek J. Russell
+ * 	
  * This server acts as a router/forwarder for chat clients. It accepts client
  * connections, registers them (via flag 1), maintains a dynamic table mapping
  * client handles to socket descriptors, and forwards packets between clients.

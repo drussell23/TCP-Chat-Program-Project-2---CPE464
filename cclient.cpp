@@ -1,8 +1,9 @@
 /******************************************************************************
- * Revised cclient.cpp with additional debug logging
+ * Name: Derek J. Russell
  *
  * This client program connects to the chat server, registers the client
  * using a handle, and then enters an asynchronous loop to process commands:
+ * 
  *   %M  – Send a message to one or more specific clients.
  *   %B  – Broadcast a message.
  *   %L  – Request the list of connected handles.
