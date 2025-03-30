@@ -295,7 +295,6 @@ void forwardBroadcast(int senderSocket, uint8_t *payload, int payloadLen)
 	memcpy(sender, payload + 1, senderLen);
 	sender[senderLen] = '\0';
 
-	PDU_Send_And_Recv pdu;
 	int cap = clientTable.getCapacity();
 	Entry_Handle_Table *arr = clientTable.getArray();
 	for (int i = 0; i < cap; i++)
@@ -331,7 +330,6 @@ void forwardDirectMessage(int senderSocket, uint8_t *payload, int payloadLen)
 	uint8_t numDest = payload[offset++];
 	LOG_INFO("Direct message from " << sender << " to " << (int)numDest << " destination(s).");
 
-	PDU_Send_And_Recv pdu;
 	for (int i = 0; i < numDest; i++)
 	{
 		if (offset >= payloadLen)
@@ -365,7 +363,6 @@ void forwardDirectMessage(int senderSocket, uint8_t *payload, int payloadLen)
 // Processes a client exit by sending an exit ACK and cleaning up.
 void processClientExit(int clientSocket)
 {
-	PDU_Send_And_Recv pdu;
 	safeSend(clientSocket, nullptr, 0, EXIT_ACK);
 	removeClientBySocket(clientSocket);
 	removeFromPollSet(clientSocket);
@@ -376,7 +373,6 @@ void processClientExit(int clientSocket)
 // Sends an error packet (flag 7) to the sender for an invalid destination handle.
 void sendErrorForInvalidHandle(int senderSocket, const char *destHandle)
 {
-	PDU_Send_And_Recv pdu;
 	uint8_t payload[MAXBUF] = {0};
 	uint8_t hLen = strlen(destHandle);
 	payload[0] = hLen;
@@ -426,8 +422,6 @@ bool safeSend(int socketNum, uint8_t *payload, int payloadLen, int flag)
 // Revised processListRequest(): sends a 7-byte PDU for handle count, then one PDU per handle, and finally an end marker.
 void processListRequest(int clientSocket)
 {
-	PDU_Send_And_Recv pdu;
-
 	// 1) Send the number of handles.
 	uint32_t numHandles = clientTable.getCount();
 	uint32_t netCount = htonl(numHandles);
