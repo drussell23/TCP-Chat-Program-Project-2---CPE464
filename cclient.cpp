@@ -3,7 +3,7 @@
  *
  * This client program connects to the chat server, registers the client
  * using a handle, and then enters an asynchronous loop to process commands:
- * 
+ *
  *   %M  – Send a message to one or more specific clients.
  *   %B  – Broadcast a message.
  *   %L  – Request the list of connected handles.
@@ -25,6 +25,7 @@
 #include "pollLib.h"
 #include "networks.h"
 #include "PDU_Send_And_Recv.h"
+#include "ConnectionStats.h"
 
 using namespace std;
 
@@ -66,6 +67,7 @@ static std::string hexDump(const uint8_t *buffer, int length)
 #define CMD_MESSAGE "%M"
 #define CMD_BROADCAST "%B"
 #define CMD_LIST "%L"
+#define CMD_CURRENT_CONNECTION_STATUS "%S"
 #define CMD_EXIT "%E"
 
 // Packet flags
@@ -93,6 +95,7 @@ static std::string hexDump(const uint8_t *buffer, int length)
 // ---------------------------------------------------------------------------
 static string g_clientHandle;
 static int g_socketNum = -1;
+static ConnectionStats connStats; // Global instance for tracking connection stats.
 
 // ---------------------------------------------------------------------------
 // Function declarations
@@ -188,6 +191,10 @@ int main(int argc, char *argv[])
 					LOG_DEBUG("User typed %L command");
 					handleListCommand(g_socketNum);
 				}
+				else if (strncasecmp(inputBuffer, CMD_CURRENT_CONNECTION_STATUS, strlen(CMD_CURRENT_CONNECTION_STATUS)) == 0)
+				{
+					connStats.printStats();
+				}
 				else if (strncasecmp(inputBuffer, CMD_EXIT, strlen(CMD_EXIT)) == 0)
 				{
 					LOG_DEBUG("User typed %E command");
@@ -270,7 +277,10 @@ void connection_setup(int socketNum, const char *handle)
 	LOG_DEBUG("Registration packet payload hex dump: "
 			  << hexDump(buffer, payload_len));
 
-	pdu.sendBuf(socketNum, buffer, payload_len, CLIENT_INIT_PACKET_TO_SERVER);
+	// Send the registration packet and record statistics.
+	int bytesSent = pdu.sendBuf(socketNum, buffer, payload_len, CLIENT_INIT_PACKET_TO_SERVER);
+	connStats.recordSent(bytesSent);
+	connStats.recordMessageSent();
 }
 
 // ---------------------------------------------------------------------------
@@ -284,6 +294,16 @@ void processIncomingPacket(int socketNum)
 	uint8_t dataBuffer[MAXBUF] = {0};
 	int flag;
 	int len = pdu.recvBuf(socketNum, dataBuffer, &flag);
+
+	// Instead of assuming the header is 3 bytes, use SIZE_CHAT_HEADER.
+	const int headerSize = SIZE_CHAT_HEADER; // Defined in PDU_Send_And_Recv.h
+	
+	if (len >= 0)
+	{
+		connStats.recordReceived(len + headerSize);
+		if (flag == MESSAGE_PACKET || flag == BROADCAST_PACKET)
+			connStats.recordMessageReceived();
+	}
 
 	LOG_DEBUG("Received packet from server: flag=" << flag
 												   << ", len=" << len
@@ -350,15 +370,19 @@ void processIncomingPacket(int socketNum)
 			LOG_ERROR("Invalid error packet: too short for handle length");
 			return;
 		}
+
 		uint8_t destLen = dataBuffer[0];
+
 		if (1 + destLen > (uint8_t)len)
 		{
 			LOG_ERROR("Destination handle length exceeds packet length");
 			return;
 		}
+
 		char dest[MAX_NAME_LEN + 1] = {0};
 		memcpy(dest, dataBuffer + 1, destLen);
 		dest[destLen] = '\0';
+
 		cout << "Error: Client with handle " << dest << " does not exist." << endl;
 	}
 	else if (flag == 9)
@@ -477,7 +501,9 @@ void handleMessageCommand(int socketNum, const char *input)
 												  << ", totalLen=" << totalPacketLength);
 		LOG_DEBUG("Payload hex: " << hexDump(packetPayload, totalPacketLength));
 
-		pdu.sendBuf(socketNum, packetPayload, totalPacketLength, MESSAGE_PACKET);
+		int bytesSent = pdu.sendBuf(socketNum, packetPayload, totalPacketLength, MESSAGE_PACKET);
+		connStats.recordSent(bytesSent);
+		connStats.recordMessageSent();
 		pos += segmentLength;
 	}
 }
@@ -544,7 +570,9 @@ void handleBroadcastCommand(int socketNum, const char *input)
 													<< ", totalLen=" << totalLen);
 		LOG_DEBUG("Payload hex: " << hexDump(packetPayload, totalLen));
 
-		pdu.sendBuf(socketNum, packetPayload, totalLen, BROADCAST_PACKET);
+		int bytesSent = pdu.sendBuf(socketNum, packetPayload, totalLen, BROADCAST_PACKET);
+		connStats.recordSent(bytesSent);
+		connStats.recordMessageSent();
 		pos += segmentLength;
 	}
 }

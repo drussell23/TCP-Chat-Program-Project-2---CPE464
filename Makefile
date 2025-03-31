@@ -11,7 +11,7 @@ LIBS =
 
 # List of object files for each target.
 # Make sure the file "networks.cpp" exists with exactly this name!
-CLIENT_OBJS = cclient.o networks.o gethostbyname.o PDU_Send_And_Recv.o pollLib.o safeUtil.o
+CLIENT_OBJS = cclient.o networks.o gethostbyname.o PDU_Send_And_Recv.o pollLib.o safeUtil.o ConnectionStats.o
 SERVER_OBJS = server.o networks.o gethostbyname.o PDU_Send_And_Recv.o pollLib.o safeUtil.o Dynamic_Array.o
 
 all: cclient server
@@ -34,4 +34,9 @@ test_register: $(TEST_REGISTER_OBJS)
 clean:
 	rm -f cclient server test_register *.o *.d
 
-.PHONY: all clean
+# Run "make rebuild" in the terminal will first execute the clean target and then build everything. 
+# Alternatively, we can do the commands from the terminal with "make clean && make".
+# Rebuild target: clean then build everything. 
+rebuild: clean all 
+
+.PHONY: all clean rebuild

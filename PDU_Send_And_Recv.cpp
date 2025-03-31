@@ -12,8 +12,6 @@
 
 using namespace std;
 
-#define SIZE_CHAT_HEADER sizeof(PDU_Header)
-
 // Special return value for valid packets with zero-length payload.
 // The value “fffffffe” is the hexadecimal representation of –2, which in 
 // the implementation is defined as VALID_ZERO_PAYLOAD. When a packet is 
