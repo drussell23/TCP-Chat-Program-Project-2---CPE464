@@ -26,6 +26,7 @@
 #include "networks.h"
 #include "PDU_Send_And_Recv.h"
 #include "ConnectionStats.h"
+#include "chatFlags.h"
 
 using namespace std;
 
@@ -83,9 +84,6 @@ static std::string hexDump(const uint8_t *buffer, int length)
 
 // The maximum total bytes allowed for the text portion in each packet (including null terminator).
 #define MAX_TEXT_PER_PACKET 200
-
-// Define special return value from recvBuf for valid zero-length payload.
-#define VALID_ZERO_PAYLOAD -2
 
 // Confirm good handle flag (registration confirmation).
 #define CONFIRM_GOOD_HANDLE 2
@@ -297,7 +295,7 @@ void processIncomingPacket(int socketNum)
 
 	// Instead of assuming the header is 3 bytes, use SIZE_CHAT_HEADER.
 	const int headerSize = SIZE_CHAT_HEADER; // Defined in PDU_Send_And_Recv.h
-	
+
 	if (len >= 0)
 	{
 		connStats.recordReceived(len + headerSize);
@@ -305,9 +303,11 @@ void processIncomingPacket(int socketNum)
 			connStats.recordMessageReceived();
 	}
 
-	LOG_DEBUG("Received packet from server: flag=" << flag
-												   << ", len=" << len
-												   << ", hex=" << hexDump(dataBuffer, (len < 16 ? len : 16)) << "...");
+	// Log the flag both as a number and as a string with its description.
+	LOG_DEBUG("Received packet from server: flag="
+			  << flag << " (" << chatFlagToString(flag) << ") - " << chatFlagDescription(flag)
+			  << ", len=" << len
+			  << ", hex=" << hexDump(dataBuffer, (len < 16 ? len : 16)) << "...");
 
 	if (len == -1)
 	{

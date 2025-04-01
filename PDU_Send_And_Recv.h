@@ -5,12 +5,9 @@
 
 using namespace std; 
 
-// Special return value for valid packets with zero-length payload.
-// The value “fffffffe” is the hexadecimal representation of –2, which in 
-// the implementation is defined as VALID_ZERO_PAYLOAD. When a packet is 
-// received with a zero-length payload (as expected for a registration 
-// confirmation with flag 2), pdu.recvBuf() returns –2. This tells the 
-// client that the packet is valid even though there’s no payload.
+// The macro “#define VALID_ZERO_PAYLOAD -2” is used as a special return value from 
+// our PDU receiving function (recvBuf) to indicate that a valid packet was received 
+// even though its payload is empty.
 #define VALID_ZERO_PAYLOAD -2 
 
 // Use pragma pack to ensure the header is exactly 3 bytes.

@@ -384,7 +384,8 @@ server.o: server.cpp \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/iomanip \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/sstream \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__fwd/sstream.h \
-  safeUtil.h pollLib.h networks.h PDU_Send_And_Recv.h Dynamic_Array.h
+  safeUtil.h pollLib.h networks.h PDU_Send_And_Recv.h Dynamic_Array.h \
+  chatFlags.h
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/iostream:
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__assert:
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__assertion_handler:
@@ -775,3 +776,4 @@ pollLib.h:
 networks.h:
 PDU_Send_And_Recv.h:
 Dynamic_Array.h:
+chatFlags.h:
