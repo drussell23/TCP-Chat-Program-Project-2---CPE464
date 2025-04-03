@@ -27,6 +27,7 @@
 #include "PDU_Send_And_Recv.h"
 #include "ConnectionStats.h"
 #include "chatFlags.h"
+#include "NLPProcessor.h" // Include the NLP module
 
 using namespace std;
 
@@ -156,11 +157,14 @@ int main(int argc, char *argv[])
 
 	char inputBuffer[MAXBUF] = {0};
 
+	NLPProcessor nlp; // Create an NLPProcessor instance (could also be created on-demand).
+
 	// Asynchronous loop: poll for events on STDIN or the socket.
 	while (true)
 	{
 		int ready_fd = pollCall(-1); // Blocks until an event occurs.
 		LOG_DEBUG("pollCall returned FD: " << ready_fd);
+
 		if (ready_fd == STDIN_FILENO)
 		{
 			// Print a prompt here so the user knows to type a command.
@@ -168,11 +172,58 @@ int main(int argc, char *argv[])
 			cout.flush();
 
 			int len = readFromStdin(inputBuffer);
+
 			if (len <= 0)
 				continue;
 
-			// Process user command.
-			if (inputBuffer[0] == '%')
+			// If the input does not start with '%', assume natural language.
+			if (inputBuffer[0] != '%')
+			{
+				// Process using NLP to convert into a structured command.
+				string structuredCommand = nlp.processMessage(inputBuffer);
+
+				// Display the converted structured command.
+				cout << "Converted command: " << structuredCommand << endl;
+
+				// If the NLP module returns an error message, display it.
+				if (structuredCommand.find("Error:") == 0)
+				{
+					cout << structuredCommand << endl;
+					continue;
+				}
+				else
+				{
+					// For debugging, show the structured command.
+					LOG_DEBUG("NLP converted input to: " << structuredCommand);
+					// Now, process the structured command as if the user had typed it.
+					if (strncasecmp(structuredCommand.c_str(), CMD_MESSAGE, strlen(CMD_MESSAGE)) == 0)
+					{
+						handleMessageCommand(g_socketNum, structuredCommand.c_str());
+					}
+					else if (strncasecmp(structuredCommand.c_str(), CMD_BROADCAST, strlen(CMD_BROADCAST)) == 0)
+					{
+						handleBroadcastCommand(g_socketNum, structuredCommand.c_str());
+					}
+					else if (strncasecmp(structuredCommand.c_str(), CMD_LIST, strlen(CMD_LIST)) == 0)
+					{
+						handleListCommand(g_socketNum);
+					}
+					else if (strncasecmp(structuredCommand.c_str(), CMD_CURRENT_CONNECTION_STATUS, strlen(CMD_CURRENT_CONNECTION_STATUS)) == 0)
+					{
+						connStats.printStats();
+					}
+					else if (strncasecmp(structuredCommand.c_str(), CMD_EXIT, strlen(CMD_EXIT)) == 0)
+					{
+						handleExitCommand(g_socketNum);
+						break;
+					}
+					else
+					{
+						cout << "Unknown structured command: " << structuredCommand << endl;
+					}
+				}
+			}
+			else // If input starts with '%', process as a strict command.
 			{
 				if (strncasecmp(inputBuffer, CMD_MESSAGE, strlen(CMD_MESSAGE)) == 0)
 				{
@@ -203,10 +254,6 @@ int main(int argc, char *argv[])
 				{
 					cout << "Invalid command" << endl;
 				}
-			}
-			else
-			{
-				cout << "Commands must start with '%'" << endl;
 			}
 		}
 		else if (ready_fd == g_socketNum)
