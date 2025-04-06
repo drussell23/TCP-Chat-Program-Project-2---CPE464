@@ -1,0 +1,95 @@
+Client SimClient_2 log start.
+Sent registration packet: Handle = SimClient_2, Bytes sent = 15
+[Receiver] Connection closed.
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] send a message to SimClient_0 hello from SimClient_2
+[Converted] %M 1 simclient_0 hello from simclient_2
+[Sent Structured] %M 1 simclient_0 hello from simclient_2
+[Sent Raw] send a message to SimClient_1 hello from SimClient_2
+[Converted] %M 1 simclient_1 hello from simclient_2
+[Sent Structured] %M 1 simclient_1 hello from simclient_2
+[Sent Raw] send a message to SimClient_1 hello from SimClient_2
+[Converted] %M 1 simclient_1 hello from simclient_2
+[Sent Structured] %M 1 simclient_1 hello from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] send a message to SimClient_0 hello from SimClient_2
+[Converted] %M 1 simclient_0 hello from simclient_2
+[Sent Structured] %M 1 simclient_0 hello from simclient_2
+[Sent Raw] send a message to SimClient_1 hello from SimClient_2
+[Converted] %M 1 simclient_1 hello from simclient_2
+[Sent Structured] %M 1 simclient_1 hello from simclient_2
+[Sent Raw] send a message to SimClient_0 hello from SimClient_2
+[Converted] %M 1 simclient_0 hello from simclient_2
+[Sent Structured] %M 1 simclient_0 hello from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] send a message to SimClient_0 hello from SimClient_2
+[Converted] %M 1 simclient_0 hello from simclient_2
+[Sent Structured] %M 1 simclient_0 hello from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] send a message to SimClient_1 hello from SimClient_2
+[Converted] %M 1 simclient_1 hello from simclient_2
+[Sent Structured] %M 1 simclient_1 hello from simclient_2
+[Sent Raw] send a message to SimClient_0 hello from SimClient_2
+[Converted] %M 1 simclient_0 hello from simclient_2
+[Sent Structured] %M 1 simclient_0 hello from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] send a message to SimClient_0 hello from SimClient_2
+[Converted] %M 1 simclient_0 hello from simclient_2
+[Sent Structured] %M 1 simclient_0 hello from simclient_2
+[Sent Raw] send a message to SimClient_0 hello from SimClient_2
+[Converted] %M 1 simclient_0 hello from simclient_2
+[Sent Structured] %M 1 simclient_0 hello from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] send a message to SimClient_0 hello from SimClient_2
+[Converted] %M 1 simclient_0 hello from simclient_2
+[Sent Structured] %M 1 simclient_0 hello from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] send a message to SimClient_1 hello from SimClient_2
+[Converted] %M 1 simclient_1 hello from simclient_2
+[Sent Structured] %M 1 simclient_1 hello from simclient_2
+[Sent Raw] send a message to SimClient_1 hello from SimClient_2
+[Converted] %M 1 simclient_1 hello from simclient_2
+[Sent Structured] %M 1 simclient_1 hello from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] broadcast good morning from SimClient_2
+[Converted] %B good morning from simclient_2
+[Sent Structured] %B good morning from simclient_2
+[Sent Raw] send a message to SimClient_0 hello from SimClient_2
+[Converted] %M 1 simclient_0 hello from simclient_2
+[Sent Structured] %M 1 simclient_0 hello from simclient_2
+Sent exit command.
+SimClient_2 simulation complete.

@@ -26,6 +26,7 @@
 #include <cstring>
 #include <cstdio>
 #include <sstream> // For hex dump logging
+#include <locale>
 
 #include <unistd.h>
 #include <sys/socket.h>
@@ -95,7 +96,7 @@ std::string hexDump(uint8_t *buffer, int length)
 void cleanupClient(int clientSocket);
 int checkArgs(int argc, char *argv[]);
 void talk_to_clients(int serverSocket);
-static bool extractHandleFromRegistration(uint8_t* buffer, int len, char* handle, int maxNameLen, uint8_t &handleLen);
+static bool extractHandleFromRegistration(uint8_t *buffer, int len, char *handle, int maxNameLen, uint8_t &handleLen);
 void processNewClient(int serverSocket);
 static void dispatchPacket(int clientSocket, int flag, uint8_t *buffer, int len);
 void processClientPacket(int clientSocket);
@@ -137,28 +138,34 @@ int main(int argc, char *argv[])
 // Checks command-line arguments and returns port number.
 int checkArgs(int argc, char *argv[])
 {
-    try {
-        // If more than one optional parameter is provided, it's an error.
-        if (argc > 2) {
-            throw std::invalid_argument("Usage: <program> [optional port number]");
-        }
+	try
+	{
+		// If more than one optional parameter is provided, it's an error.
+		if (argc > 2)
+		{
+			throw std::invalid_argument("Usage: <program> [optional port number]");
+		}
 
-        int portNumber = 0;
-        if (argc == 2) {
-            // Use std::string and std::stoi for robust conversion.
-            std::string arg(argv[1]);
-            portNumber = std::stoi(arg);
+		int portNumber = 0;
+		if (argc == 2)
+		{
+			// Use std::string and std::stoi for robust conversion.
+			std::string arg(argv[1]);
+			portNumber = std::stoi(arg);
 
-            // Optionally, verify that the port number is within a valid range.
-            if (portNumber < 1 || portNumber > 65535) {
-                throw std::out_of_range("Port number must be between 1 and 65535.");
-            }
-        }
-        return portNumber;
-    } catch (const std::exception &e) {
-        std::cerr << "Error processing command-line arguments: " << e.what() << std::endl;
-        exit(-1);
-    }
+			// Optionally, verify that the port number is within a valid range.
+			if (portNumber < 1 || portNumber > 65535)
+			{
+				throw std::out_of_range("Port number must be between 1 and 65535.");
+			}
+		}
+		return portNumber;
+	}
+	catch (const std::exception &e)
+	{
+		std::cerr << "Error processing command-line arguments: " << e.what() << std::endl;
+		exit(-1);
+	}
 }
 
 // Main loop: poll for new connections or activity on client sockets.
@@ -188,107 +195,143 @@ void talk_to_clients(int serverSocket)
 // - maxNameLen: maximum allowed length for the handle.
 // - handleLen: reference to store the actual handle length.
 // Returns true if the extraction is successful; false otherwise.
-static bool extractHandleFromRegistration(uint8_t* buffer, int len, char* handle, int maxNameLen, uint8_t &handleLen)
+static bool extractHandleFromRegistration(uint8_t *buffer, int len, char *handle, int maxNameLen, uint8_t &handleLen)
 {
-    if (len < 1) {
-        LOG_ERROR("Registration payload is too short.");
-        return false;
-    }
-    handleLen = buffer[0];
-    if (handleLen == 0 || handleLen > maxNameLen || len < (1 + handleLen)) {
-        LOG_ERROR("Invalid handle length in registration packet: " << (int)handleLen
-                  << ". Expected between 1 and " << maxNameLen << " bytes.");
-        return false;
-    }
-    memcpy(handle, buffer + 1, handleLen);
-    handle[handleLen] = '\0';
-    return true;
+	if (len < 1)
+	{
+		LOG_ERROR("Registration payload is too short.");
+		return false;
+	}
+	handleLen = buffer[0];
+	if (handleLen == 0 || handleLen > maxNameLen || len < (1 + handleLen))
+	{
+		LOG_ERROR("Invalid handle length in registration packet: " << (int)handleLen
+																   << ". Expected between 1 and " << maxNameLen << " bytes.");
+		return false;
+	}
+	memcpy(handle, buffer + 1, handleLen);
+	handle[handleLen] = '\0';
+	return true;
 }
 
 // Revised processNewClient(): Accepts a new client connection, receives its registration packet,
 // extracts the handle using the helper function, validates it, and registers the client.
 void processNewClient(int serverSocket)
 {
-    int clientSocket = tcpAccept(serverSocket, DEBUG_FLAG);
-    PDU_Send_And_Recv pdu;
-    uint8_t buffer[MAXBUF] = {0};
-    int flag;
-    int len = pdu.recvBuf(clientSocket, buffer, &flag);
+	int clientSocket = tcpAccept(serverSocket, DEBUG_FLAG);
+	PDU_Send_And_Recv pdu;
+	uint8_t buffer[MAXBUF] = {0};
+	int flag;
+	int len = pdu.recvBuf(clientSocket, buffer, &flag);
 
-    LOG_DEBUG("Received registration packet on socket " << clientSocket
-              << " with flag " << flag << " and length " << len
-              << ". Data: " << hexDump(buffer, len));
+	LOG_DEBUG("Received registration packet on socket " << clientSocket
+														<< " with flag " << flag << " and length " << len
+														<< ". Data: " << hexDump(buffer, len));
 
-    if (!verifyPacketLength(len, 1) || flag != CLIENT_INIT_PACKET_TO_SERVER) {
-        LOG_ERROR("Invalid registration packet received. Expected flag " 
-                  << CLIENT_INIT_PACKET_TO_SERVER << " but got flag " << flag);
-        cleanupClient(clientSocket);
-        return;
-    }
+	if (!verifyPacketLength(len, 1) || flag != CLIENT_INIT_PACKET_TO_SERVER)
+	{
+		LOG_ERROR("Invalid registration packet received. Expected flag "
+				  << CLIENT_INIT_PACKET_TO_SERVER << " but got flag " << flag);
+		cleanupClient(clientSocket);
+		return;
+	}
 
-    uint8_t handleLen;
-    char handle[ChatConstants::MaxNameLen + 1] = {0};
+	uint8_t handleLen;
+	char handle[ChatConstants::MaxNameLen + 1] = {0};
 
-    // Use helper function to extract the handle.
-    if (!extractHandleFromRegistration(buffer, len, handle, ChatConstants::MaxNameLen, handleLen)) {
-        pdu.sendBuf(clientSocket, nullptr, 0, ERROR_ON_INIT_PACKET);
-        cleanupClient(clientSocket);
-        return;
-    }
-    LOG_DEBUG("Parsed handle: " << handle);
+	if (!extractHandleFromRegistration(buffer, len, handle, ChatConstants::MaxNameLen, handleLen))
+	{
+		pdu.sendBuf(clientSocket, nullptr, 0, ERROR_ON_INIT_PACKET);
+		cleanupClient(clientSocket);
+		return;
+	}
 
-    // Check for duplicate handles.
-    if (clientTable.getSocketForHandle(handle) != -1) {
-        pdu.sendBuf(clientSocket, nullptr, 0, ERROR_ON_INIT_PACKET);
-        LOG_ERROR("Duplicate handle (" << handle << ") registration attempt on socket " << clientSocket);
-        cleanupClient(clientSocket);
-        return;
-    }
+	// Convert extracted handle to a std::string.
+	std::string handleStr(handle, handleLen);
 
-    // Create a new entry and add it to the dynamic table.
-    Handling newHandle;
-    newHandle.handleLength = handleLen;
-    memcpy(newHandle.handle, handle, handleLen);
-    newHandle.handle[handleLen] = '\0';
+	// Trim whitespace from both ends.
+	handleStr.erase(handleStr.begin(), std::find_if(handleStr.begin(), handleStr.end(),
+													[](unsigned char ch)
+													{ return !std::isspace(ch); }));
+	handleStr.erase(std::find_if(handleStr.rbegin(), handleStr.rend(),
+								 [](unsigned char ch)
+								 { return !std::isspace(ch); })
+						.base(),
+					handleStr.end());
 
-    if (clientTable.addElement(newHandle, clientSocket) < 0) {
-        pdu.sendBuf(clientSocket, nullptr, 0, ERROR_ON_INIT_PACKET);
-        LOG_ERROR("Failed to add handle (" << handle << ") to dynamic table.");
-        cleanupClient(clientSocket);
-        return;
-    }
+	// Convert to lowercase.
+	std::transform(handleStr.begin(), handleStr.end(), handleStr.begin(), ::tolower);
 
-    // Confirm registration and add the new client to the poll set.
-    pdu.sendBuf(clientSocket, nullptr, 0, CONFIRM_GOOD_HANDLE);
-    addToPollSet(clientSocket);
-    LOG_INFO("New client registered: " << handle << " on socket " << clientSocket);
+	// Copy the standardized handle back.
+	strncpy(handle, handleStr.c_str(), ChatConstants::MaxNameLen);
+	handle[handleStr.size()] = '\0';
+	handleLen = static_cast<uint8_t>(handleStr.size());
+
+	LOG_DEBUG("Parsed and standardized handle: '" << handle << "'");
+
+	// Print current handle table before adding the new client.
+	LOG_DEBUG("Current handle table BEFORE adding new client:");
+	clientTable.printTable();
+
+	// Check for duplicate handle.
+	if (clientTable.getSocketForHandle(handle) != -1)
+	{
+		pdu.sendBuf(clientSocket, nullptr, 0, ERROR_ON_INIT_PACKET);
+		LOG_ERROR("Duplicate handle (" << handle << ") registration attempt on socket " << clientSocket);
+		cleanupClient(clientSocket);
+		return;
+	}
+
+	// Create a new entry and add it to the dynamic table.
+	Handling newHandle;
+	newHandle.handleLength = handleLen;
+	memcpy(newHandle.handle, handle, handleLen);
+	newHandle.handle[handleLen] = '\0';
+
+	if (clientTable.addElement(newHandle, clientSocket) < 0)
+	{
+		pdu.sendBuf(clientSocket, nullptr, 0, ERROR_ON_INIT_PACKET);
+		LOG_ERROR("Failed to add handle (" << handle << ") to dynamic table.");
+		cleanupClient(clientSocket);
+		return;
+	}
+
+	// Print the updated handle table.
+	LOG_DEBUG("Updated handle table AFTER adding new client:");
+	clientTable.printTable();
+
+	// Confirm registration.
+	pdu.sendBuf(clientSocket, nullptr, 0, CONFIRM_GOOD_HANDLE);
+	addToPollSet(clientSocket);
+	LOG_INFO("New client registered: " << handle << " on socket " << clientSocket);
 }
 
+// Helper function: Dispatch the packet based on its flag.
+static void dispatchPacket(int clientSocket, int flag, uint8_t *buffer, int len)
+{
+	switch (flag)
+	{
+	case BROADCAST_PACKET:
+		forwardBroadcast(clientSocket, buffer, len);
+		break;
 
-// Helper function: Dispatch the packet based on its flag. 
-static void dispatchPacket(int clientSocket, int flag, uint8_t *buffer, int len) {
-	switch (flag) {
-		case BROADCAST_PACKET:
-			forwardBroadcast(clientSocket, buffer, len);
-			break;
+	case MESSAGE_PACKET:
+		forwardDirectMessage(clientSocket, buffer, len);
+		break;
 
-		case MESSAGE_PACKET:
-			forwardDirectMessage(clientSocket, buffer, len);
-			break;
+	case CLIENT_TO_SERVER_EXIT:
+		LOG_DEBUG("Dispatch: Processing exit packet from socket " << clientSocket);
+		processClientExit(clientSocket);
+		break;
 
-		case CLIENT_TO_SERVER_EXIT:
-			LOG_DEBUG("Dispatch: Processing exit packet from socket " << clientSocket);
-			processClientExit(clientSocket);
-			break;
+	case CLIENT_TO_SERVER_LIST_OF_HANDLES: // flag 10 (0x0A)
+		LOG_DEBUG("Dispatch: Processing list request from socket" << clientSocket);
+		processListRequest(clientSocket);
+		break;
 
-		case CLIENT_TO_SERVER_LIST_OF_HANDLES: // flag 10 (0x0A)
-			LOG_DEBUG("Dispatch: Processing list request from socket" << clientSocket);
-			processListRequest(clientSocket);
-			break;
-
-		default: 
-			LOG_ERROR("Dispatch: Unknown flag " << flag << " received from socket " << clientSocket << ". Data: " << hexDump(buffer, len));
-			break;
+	default:
+		LOG_ERROR("Dispatch: Unknown flag " << flag << " received from socket " << clientSocket << ". Data: " << hexDump(buffer, len));
+		break;
 	}
 }
 
@@ -296,32 +339,32 @@ static void dispatchPacket(int clientSocket, int flag, uint8_t *buffer, int len)
 // Revised processClientPacket() using helper functions.
 void processClientPacket(int clientSocket)
 {
-    PDU_Send_And_Recv pdu;
-    uint8_t buffer[MAXBUF] = {0};
-    int flag;
-    int len = pdu.recvBuf(clientSocket, buffer, &flag);
+	PDU_Send_And_Recv pdu;
+	uint8_t buffer[MAXBUF] = {0};
+	int flag;
+	int len = pdu.recvBuf(clientSocket, buffer, &flag);
 
-    LOG_DEBUG("Received packet on socket " << clientSocket
-              << " with flag " << flag << " and length " << len
-              << ". Data: " << hexDump(buffer, (len < 16 ? len : 16)) << "...");
+	LOG_DEBUG("Received packet on socket " << clientSocket
+										   << " with flag " << flag << " and length " << len
+										   << ". Data: " << hexDump(buffer, (len < 16 ? len : 16)) << "...");
 
-    // Only treat negative values (other than VALID_ZERO_PAYLOAD) as errors.
-    if (len < 0 && len != VALID_ZERO_PAYLOAD)
-    {
-        LOG_INFO("Client on socket " << clientSocket << " terminated (len < 0).");
-        cleanupClient(clientSocket);
-        return;
-    }
+	// Only treat negative values (other than VALID_ZERO_PAYLOAD) as errors.
+	if (len < 0 && len != VALID_ZERO_PAYLOAD)
+	{
+		LOG_INFO("Client on socket " << clientSocket << " terminated (len < 0).");
+		cleanupClient(clientSocket);
+		return;
+	}
 
-    // For a valid zero payload, set len to 0 for further processing.
-    if (len == VALID_ZERO_PAYLOAD)
-    {
-        LOG_DEBUG("Received valid zero-length payload with flag=" << flag);
-        len = 0;
-    }
+	// For a valid zero payload, set len to 0 for further processing.
+	if (len == VALID_ZERO_PAYLOAD)
+	{
+		LOG_DEBUG("Received valid zero-length payload with flag=" << flag);
+		len = 0;
+	}
 
-    // Dispatch the packet to the appropriate handler.
-    dispatchPacket(clientSocket, flag, buffer, len);
+	// Dispatch the packet to the appropriate handler.
+	dispatchPacket(clientSocket, flag, buffer, len);
 }
 
 // For broadcast messages, forward the packet to all clients except the sender.
@@ -364,20 +407,24 @@ void forwardBroadcast(int senderSocket, uint8_t *payload, int payloadLen)
 // - maxSenderSize: maximum allowed size for sender.
 // - numDest: reference to an int to store the number of destination handles.
 // Returns true if successful; false otherwise.
-static bool parseSenderAndDestinations(uint8_t *payload, int payloadLen, int &offset, char *sender, int maxSenderSize, int &numDest) {
-	if (payloadLen < 1) {
+static bool parseSenderAndDestinations(uint8_t *payload, int payloadLen, int &offset, char *sender, int maxSenderSize, int &numDest)
+{
+	if (payloadLen < 1)
+	{
 		LOG_ERROR("Payload length insufficient for sender length.");
 		return false;
 	}
 
 	uint8_t senderLen = payload[offset++];
 
-	if (payloadLen < (1 + senderLen + 1)) {
+	if (payloadLen < (1 + senderLen + 1))
+	{
 		LOG_ERROR("Payload too short for sender and destination count.");
 		return false;
 	}
 
-	if (senderLen >= maxSenderSize) {
+	if (senderLen >= maxSenderSize)
+	{
 		LOG_ERROR("Sender length exceeds maximum allowed (" << maxSenderSize << ").");
 		return false;
 	}
@@ -398,20 +445,24 @@ static bool parseSenderAndDestinations(uint8_t *payload, int payloadLen, int &of
 // - dest: buffer to store the parsed destination handle (should have size at least maxDestSize).
 // - maxDestSize: maximum allowed size for destination handle.
 // Returns true if successful; false otherwise.
-static bool getNextDestinationHandle(uint8_t *payload, int payloadLen, int &offset, char *dest, int maxDestSize) {
-	if (offset >= payloadLen) {
+static bool getNextDestinationHandle(uint8_t *payload, int payloadLen, int &offset, char *dest, int maxDestSize)
+{
+	if (offset >= payloadLen)
+	{
 		LOG_ERROR("Direct message packet truncated while reading destination handle length.");
 		return false;
 	}
 
 	uint8_t destLen = payload[offset++];
 
-	if (offset + destLen > payloadLen) {
+	if (offset + destLen > payloadLen)
+	{
 		LOG_ERROR("Direct meesage packet length inconsistent with destination handle length.");
 		return false;
 	}
 
-	if (destLen >= maxDestSize) {
+	if (destLen >= maxDestSize)
+	{
 		LOG_ERROR("Destination handle length exceeds maximum allowed (" << maxDestSize << ").");
 		return false;
 	}
@@ -423,6 +474,54 @@ static bool getNextDestinationHandle(uint8_t *payload, int payloadLen, int &offs
 	return true;
 }
 
+// trim from start (in place)
+static inline std::string ltrim(const std::string &s)
+{
+	std::string result = s;
+	result.erase(result.begin(), std::find_if(result.begin(), result.end(),
+											  [](unsigned char ch)
+											  { return !std::isspace(ch); }));
+	return result;
+}
+
+// trim from end (in place)
+static inline std::string rtrim(const std::string &s)
+{
+	std::string result = s;
+	result.erase(std::find_if(result.rbegin(), result.rend(),
+							  [](unsigned char ch)
+							  { return !std::isspace(ch); })
+					 .base(),
+				 result.end());
+	return result;
+}
+
+// trim from both ends
+static inline std::string trim(const std::string &s)
+{
+	return rtrim(ltrim(s));
+}
+
+// Helper to trim whitespace from both ends of a string.
+static std::string trimString(const std::string &s)
+{
+	auto start = s.find_first_not_of(" \t\n\r");
+	if (start == std::string::npos)
+		return "";
+	auto end = s.find_last_not_of(" \t\n\r");
+	return s.substr(start, end - start + 1);
+}
+
+// Helper to convert a string to lowercase.
+static std::string toLower(const std::string &s)
+{
+	std::string result = s;
+	std::transform(result.begin(), result.end(), result.begin(),
+				   [](unsigned char c)
+				   { return std::tolower(c); });
+	return result;
+}
+
 // Revised forwardDirectMessage() using helper functions and ChatConstants::MaxNameLen.
 void forwardDirectMessage(int senderSocket, uint8_t *payload, int payloadLen)
 {
@@ -430,28 +529,41 @@ void forwardDirectMessage(int senderSocket, uint8_t *payload, int payloadLen)
 	char sender[ChatConstants::MaxNameLen + 1] = {0};
 	int numDest = 0;
 
-	// Parse the sender handle and destination count.
-	if (!parseSenderAndDestinations(payload, payloadLen, offset, sender, ChatConstants::MaxNameLen + 1, numDest)) {
+	if (!parseSenderAndDestinations(payload, payloadLen, offset, sender, ChatConstants::MaxNameLen + 1, numDest))
+	{
 		LOG_ERROR("Failed to parse sender and destination count.");
 		return;
 	}
 
 	LOG_INFO("Direct message from " << sender << " to " << numDest << " destination(s).");
 
-	// Process each destination.
-	for (int i = 0; i < numDest; i++) {
-		char dest[ChatConstants::MaxNameLen + 1] = {0};
+	for (int i = 0; i < numDest; i++)
+	{
+		char destRaw[ChatConstants::MaxNameLen + 1] = {0};
 
-		if (!getNextDestinationHandle(payload, payloadLen, offset, dest, ChatConstants::MaxNameLen + 1)) {
+		if (!getNextDestinationHandle(payload, payloadLen, offset, destRaw, ChatConstants::MaxNameLen + 1))
+		{
 			LOG_ERROR("Failed to parse destination handle for destination " << i + 1);
 			return;
 		}
 
-		int destSocket = clientTable.getSocketForHandle(dest);
+		// Convert the extracted destination handle to a std::string,
+		// trim whitespace, and convert to lowercase.
+		std::string destStr(destRaw);
+		destStr = trimString(destStr);
+		destStr = toLower(destStr);
 
-		if (destSocket == -1) {
-			sendErrorForInvalidHandle(senderSocket, dest);
-		} else {
+		LOG_DEBUG("Extracted destination handle after processing: '" << destStr
+																	 << "' with length: " << destStr.size());
+
+		// Lookup the destination in the dynamic handle table.
+		int destSocket = clientTable.getSocketForHandle(destStr.c_str());
+		if (destSocket == -1)
+		{
+			sendErrorForInvalidHandle(senderSocket, destStr.c_str());
+		}
+		else
+		{
 			if (!safeSend(destSocket, payload, payloadLen, MESSAGE_PACKET))
 				LOG_ERROR("Failed to forward direct message to socket " << destSocket);
 		}

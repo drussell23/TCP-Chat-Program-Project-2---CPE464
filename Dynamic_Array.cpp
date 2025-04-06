@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <iomanip>
 #include <exception>
 
 using namespace std;
@@ -199,25 +200,50 @@ void Dynamic_Array::removeElementBySocket(int socketNumber)
     }
 }
 
-// Searches for an entry matching the given handle name using binary search.
-// Returns the corresponding socket number, or -1 if not found.
-int Dynamic_Array::getSocketForHandle(const char *handleName) const
-{
-    try
-    {
-        Handling target;
-        target.handleLength = strlen(handleName);
-        memcpy(target.handle, handleName, target.handleLength);
-        int index = BinarySearchHelper::binarySearch(array, count, target);
-        if (index != -1)
-        {
-            return array[index].socketNumber;
+// Helper function to trim whitespace from both ends of a string.
+static std::string trimString(const std::string &s) {
+    auto start = s.find_first_not_of(" \t\n\r");
+    if (start == std::string::npos)
+        return "";
+    auto end = s.find_last_not_of(" \t\n\r");
+    return s.substr(start, end - start + 1);
+}
+
+// Helper function to convert a string to lowercase.
+static std::string toLower(const std::string &s) {
+    std::string result = s;
+    std::transform(result.begin(), result.end(), result.begin(),
+                   [](unsigned char c){ return std::tolower(c); });
+    return result;
+}
+
+int Dynamic_Array::getSocketForHandle(const char *handleName) const {
+    try {
+        // Convert input handle to a trimmed, lowercase std::string.
+        std::string searchHandle(handleName);
+        searchHandle = trimString(searchHandle);
+        searchHandle = toLower(searchHandle);
+
+        std::cerr << "[DEBUG] getSocketForHandle (linear): Searching for handle '"
+                  << searchHandle << "'" << std::endl;
+
+        // Linear search through the registered entries.
+        for (int i = 0; i < count; i++) {
+            std::string storedHandle(array[i].handle.handle, array[i].handle.handleLength);
+            storedHandle = trimString(storedHandle);
+            storedHandle = toLower(storedHandle);
+
+            if (storedHandle == searchHandle) {
+                std::cerr << "[DEBUG] getSocketForHandle (linear): Found handle '"
+                          << storedHandle << "' on socket " << array[i].socketNumber << std::endl;
+                return array[i].socketNumber;
+            }
         }
+        std::cerr << "[DEBUG] getSocketForHandle (linear): Handle not found." << std::endl;
         return -1;
     }
-    catch (const std::exception &e)
-    {
-        cerr << "Exception in Dynamic_Array::getSocketForHandle: " << e.what() << endl;
+    catch (const std::exception &e) {
+        std::cerr << "Exception in Dynamic_Array::getSocketForHandle: " << e.what() << std::endl;
         return -1;
     }
 }

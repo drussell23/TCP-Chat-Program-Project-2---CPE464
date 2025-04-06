@@ -176,7 +176,6 @@ string NLPProcessor::generateResponse(const string &intent, const string &messag
 
         ostringstream oss;
         oss << "%B " << msgBody;
-
         return oss.str();
     }
     else if (intent == "send_message")
@@ -206,16 +205,18 @@ string NLPProcessor::generateResponse(const string &intent, const string &messag
             return "Please specify a destination handle for your message.";
         }
 
-        // Set the destination.
+        // Set the destination. Here we trim any extra spaces.
         pendingCommand.commandType = "send_message";
-        pendingCommand.destination = tokens[posTo + 1];
+        pendingCommand.destination = trim(tokens[posTo + 1]);
+
+        std::cout << "[DEBUG] Extracted destination handle: '"
+                  << pendingCommand.destination
+                  << "' with length: " << pendingCommand.destination.size() << std::endl;
 
         // Get message text from remaining tokens.
         ostringstream msgStream;
-
         for (size_t i = posTo + 2; i < tokens.size(); i++)
             msgStream << tokens[i] << " ";
-
         string msgBody = trim(msgStream.str());
 
         if (msgBody.empty())

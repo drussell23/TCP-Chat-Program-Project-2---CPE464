@@ -42,23 +42,23 @@ private:
     // Preprocesses the input (e.g., converts to lowercase, trims, tokenizes).
     string preprocess(const string &message);
 
-    // Corrects common spelling mistakes and performs additional normalization. 
+    // Corrects common spelling mistakes and performs additional normalization.
     string correctSpelling(const string &message);
 
     // Recognizes the intent based on the preprocessed (and spell-corrected) message.
     // Now this function delegates to our ML-style classifier.
     string recognizeIntent(const string &message);
 
-    // Our new ML-style function that classifies user intent. 
+    // Our new ML-style function that classifies user intent.
     string classifyIntent(const string &message);
 
     // Generates a structured command or clarifying prompt based on the recognized intent.
     string generateResponse(const string &intent, const string &message);
 
-    // Continues a pending command using new input. 
+    // Continues a pending command using new input.
     string continuePendingCommand(const string &newInput);
 
-    // Resets the pending command and dialogue state. 
+    // Resets the pending command and dialogue state.
     void resetPendingCommand();
 
     DialogueState currentState;
