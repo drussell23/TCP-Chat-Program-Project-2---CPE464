@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include "pollLib.h"
+#include "pollLib.h" 
 #include "networks.h"
 #include "PDU_Send_And_Recv.h"
 #include "ConnectionStats.h"
@@ -122,7 +122,13 @@ void handleExitCommand(int socketNum);
 
 // New function
 int readNBytes(int socketNum, uint8_t *buffer, int n);
+int connectToServer(const string &server, int port, const string &handle);
+void sendRegistration(int sock, const string &handle, PDU_Send_And_Recv &pdu, ofstream &logFile);
+string generateNLPCommand(bool isBroadcast, const string &handle, const vector<string> &simHandles, default_random_engine &eng, uniform_int_distribution<int> &recipientDist);
+void simulateMessageLoop(int sock, int totalMessages, const string &handle, const vector<string> &simHandles, NLPProcessor &nlp, default_random_engine &eng, uniform_int_distribution<int> &recipientDist, PDU_Send_And_Recv &pdu, ofstream &logFile);
+void sendExitCommand(int sock, PDU_Send_And_Recv &pdu, ofstream &logFile);
 void simulateClient(int clientId, const string &server, int port, int totalMessages, const vector<string> &simHandles);
+
 // Helper function for receiver thread.
 void receiverThread(int sock, ofstream &logFile, PDU_Send_And_Recv &pdu);
 int randomDelay(int base, int range);
@@ -154,114 +160,148 @@ int randomDelay(int base, int range)
 	return base + rand() % range;
 }
 
-// Simulation mode: Simulate a single client instance.
-void simulateClient(int clientId, const std::string &server, int port, int totalMessages, const std::vector<std::string> &simHandles)
-{
-	// Use the handle provided in the simHandles vector.
-	std::string handle = simHandles[clientId];
-	// Set the thread-local client handle for this simulation.
-	g_clientHandle = handle;
-
-	// Prepare server address and port.
+// Helper function to connect to the server and return the socket number. 
+int connectToServer(const string &server, int port, const string &handle) {
 	char serverAddr[256];
 	strncpy(serverAddr, server.c_str(), sizeof(serverAddr));
 	serverAddr[sizeof(serverAddr) - 1] = '\0';
 	char portStr[10];
 	snprintf(portStr, sizeof(portStr), "%d", port);
 
-	// Connect to the server.
 	int sock = tcpClientSetup(serverAddr, portStr, 0);
-	if (sock < 0)
-	{
-		std::cerr << handle << " failed to connect to server." << std::endl;
-		return;
+
+	if (sock < 0) {
+		cerr << handle << " failed to connect to server." << endl;
+	} else {
+		cout << handle << " connected on socket " << sock << endl;
 	}
-	std::cout << handle << " connected on socket " << sock << std::endl;
+	return sock;
+}
 
-	// Open a log file.
-	std::ofstream logFile("simclient_" + std::to_string(clientId) + "_log.txt");
-	logFile << "Client " << handle << " log start." << std::endl;
-
-	// Send registration packet.
+// Helper function to send the registration packet.
+void sendRegistration(int sock, const string &handle, PDU_Send_And_Recv &pdu, ofstream &logFile) {
 	uint8_t regPayload[256];
 	uint8_t hLen = static_cast<uint8_t>(handle.size());
 	regPayload[0] = hLen;
 	memcpy(regPayload + 1, handle.c_str(), hLen);
-
-	PDU_Send_And_Recv pdu;
 	int regBytes = pdu.sendBuf(sock, regPayload, 1 + hLen, CLIENT_INIT_PACKET_TO_SERVER);
-	logFile << "Sent registration packet: Handle = " << handle << ", Bytes sent = " << regBytes << std::endl;
 
-	// NEW: Wait for a short period to allow all clients to register.
-	std::this_thread::sleep_for(std::chrono::seconds(2));
+	cout << "Sent registration packet: Handle = " << handle << ", Bytes sent = " << regBytes << endl;
+	logFile << "Sent registration packet: Handle = " << handle << ", Bytes sent = " << regBytes << endl;
+}
 
-	// Start a receiver thread to log incoming messages.
-	std::thread recvThread(receiverThread, sock, std::ref(logFile), std::ref(pdu));
+// Helper function to generate an NLP command. If isBroadcast is true, returns a broadcast command; otherwise, selects a random recipient. 
+string generateNLPCommand(bool isBroadcast, const string &handle, const vector<string> &simHandles, default_random_engine &eng, uniform_int_distribution<int> &recipientDist) {
+	if (isBroadcast) {
+		return "broadcast good morning from " + handle; 
+	} else {
+		string recipient;
 
-	// Create an NLPProcessor instance.
-	NLPProcessor nlp;
-	std::default_random_engine eng((unsigned)std::chrono::system_clock::now().time_since_epoch().count());
-	std::uniform_int_distribution<int> recipientDist(0, simHandles.size() - 1);
+		// Ensure the recipient is not the current handle. 
+		do {
+			recipient = simHandles[recipientDist(eng)];
+		} while (recipient == handle);
+		return "send a message to " + recipient + " hello from " + handle;
+	}
+}
 
-	// Simulate sending totalMessages messages.
-	for (int i = 0; i < totalMessages; i++)
-	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(randomDelay(100, 400)));
-		// Randomly decide whether to send a broadcast or a direct message.
+// Helper function to simulate sending messages.
+void simulateMessageLoop(int sock, int totalMessages, const string &handle, const vector<string> &simHandles, NLPProcessor &nlp, default_random_engine &eng, uniform_int_distribution<int> &recipientDist, PDU_Send_And_Recv &pdu, ofstream &logFile) {
+	for (int i = 0; i < totalMessages; i++) {
+		this_thread::sleep_for(chrono::milliseconds(randomDelay(100, 400)));
 		bool isBroadcast = (rand() % 2 == 0);
-		std::string nlCommand;
-		if (isBroadcast)
-		{
-			nlCommand = "broadcast good morning from " + handle;
-		}
-		else
-		{
-			// Pick a random recipient that is not this client.
-			std::string recipient;
-			do
-			{
-				recipient = simHandles[recipientDist(eng)];
-			} while (recipient == handle);
-			nlCommand = "send a message to " + recipient + " hello from " + handle;
-		}
+		string nlCommand = generateNLPCommand(isBroadcast, handle, simHandles, eng, recipientDist);
 
-		logFile << "[Sent Raw] " << nlCommand << std::endl;
-		std::string structuredCommand = nlp.processMessage(nlCommand);
-		logFile << "[Converted] " << structuredCommand << std::endl;
+		cout << "[Sent Raw] " << nlCommand << endl;
+		logFile << "[Sent Raw] " << nlCommand << endl;
 
+		string structuredCommand = nlp.processMessage(nlCommand);
+
+		cout << "[Converted] " << structuredCommand << endl;
+		logFile << "[Converted] " << structuredCommand << endl;
+
+		// Process the structured command based on its type. 
 		if (structuredCommand.substr(0, 2) == "%M")
 			handleMessageCommand(sock, structuredCommand.c_str());
 		else if (structuredCommand.substr(0, 2) == "%B")
 			handleBroadcastCommand(sock, structuredCommand.c_str());
 		else if (structuredCommand.substr(0, 2) == "%L")
 			handleListCommand(sock);
-		else
-		{
+		else {
+			// For any other command, send it directly.
 			int flagToSend = 0;
-			pdu.sendBuf(sock, reinterpret_cast<uint8_t *>(const_cast<char *>(structuredCommand.c_str())),
-						structuredCommand.length(), flagToSend);
+
+			pdu.sendBuf(sock, reinterpret_cast<uint8_t *>(const_cast<char *>(structuredCommand.c_str())), structuredCommand.length(), flagToSend);
 		}
-		logFile << "[Sent Structured] " << structuredCommand << std::endl;
+
+		cout << "[Sent Structured] " << structuredCommand << endl;
+		logFile << "[Sent Structured] " << structuredCommand << endl;
 	}
+}
+
+// Helper function to send the exit command. 
+void sendExitCommand(int sock, PDU_Send_And_Recv &pdu, ofstream &logFile) {
+	string exitCommand = "%E";
+	int exitBytes = pdu.sendBuf(sock, reinterpret_cast<uint8_t *>(const_cast<char *>(exitCommand.c_str())), exitCommand.length(), EXIT_PACKET);
+
+	if (exitBytes != (int)(SIZE_CHAT_HEADER + exitCommand.length())) {
+		LOG_ERROR("Failed to send exit command properly. Socket may have been closed.");
+	} else {
+		cout << "Sent exit command." << endl;
+		logFile << "Sent exit command." << endl;
+	}
+}
+
+// Revised simulateClient() using helper functions. 
+void simulateClient(int clientId, const string &server, int port, int totalMessages, const vector<string> &simHandles)
+{
+	// Use the handle provided in the simHandles vector.
+	string handle = simHandles[clientId];
+	// Set the thread-local client handle for this simulation.
+	g_clientHandle = handle;
+
+	// Connect to the server. 
+	int sock = connectToServer(server, port, handle);
+
+	if (sock < 0) {
+		return;
+	}
+
+	// Open a log file.
+	ofstream logFile ("simclient_" + to_string(clientId) + "_log.txt");
+
+	cout << "Client " << handle << " log start." << endl;
+	logFile << "Client " << handle << " log start." << endl;
+
+	PDU_Send_And_Recv pdu;
+
+	// Send registration packet. 
+	sendRegistration(sock, handle, pdu, logFile);
+
+	// Wait for a short period to allow all clients to register. 
+	this_thread::sleep_for(chrono::seconds(2));
+
+	// Start a receiver thread to log incoming messages. 
+	thread recvThread(receiverThread, sock, ref(logFile), ref(pdu));
+
+	// Create an NLPProcessor instance.
+	NLPProcessor nlp;
+	
+	default_random_engine eng((unsigned)chrono::system_clock::now().time_since_epoch().count());
+	uniform_int_distribution<int> recipientDist(0, simHandles.size() - 1);
+
+	// Simulate sending messages. 
+	simulateMessageLoop(sock, totalMessages, handle, simHandles, nlp, eng, recipientDist, pdu, logFile);
 
 	// Finally, send an exit command.
-	std::string exitCommand = "%E";
-	int exitBytes = pdu.sendBuf(sock, reinterpret_cast<uint8_t *>(const_cast<char *>(exitCommand.c_str())),
-								exitCommand.length(), EXIT_PACKET);
-	if (exitBytes != (int)(SIZE_CHAT_HEADER + exitCommand.length()))
-	{
-		LOG_ERROR("Failed to send exit command properly. Socket may have been closed.");
-	}
-	else
-	{
-		logFile << "Sent exit command." << std::endl;
-	}
+	sendExitCommand(sock, pdu, logFile);
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	this_thread::sleep_for(chrono::milliseconds(100));
 	recvThread.join();
 	close(sock);
 
-	logFile << handle << " simulation complete." << std::endl;
+	cout << handle << " simulation complete." << endl;
+	logFile << handle << " simulation complete." << endl;
 }
 
 int main(int argc, char *argv[])
